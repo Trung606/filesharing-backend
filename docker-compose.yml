@@ -1,0 +1,34 @@
+﻿version: '3.8'
+
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: filesharing-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=yourpassword
+      - POSTGRES_DB=FileSharingDb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: filesharing-api
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=FileSharingDb;Username=postgres;Password=yourpassword
+    depends_on:
+      - db
+    volumes:
+      # This saves the physical files to your host machine so they don't get deleted
+      - file_uploads:/app/wwwroot/uploads 
+
+volumes:
+  pgdata:
+  file_uploads: # Declare the new volume here
