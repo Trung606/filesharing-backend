@@ -1,14 +1,16 @@
 {
   "ExpandedNodes": [
     "",
+    "\\.github",
+    "\\.github\\workflows",
+    "\\FileSharingAPI",
+    "\\FileSharingAPI.Tests",
     "\\FileSharingAPI\\k",
-    "\\FileSharingAPI\\Migrations",
-    "\\FileSharingAPI\\Models",
-    "\\FileSharingAPI\\NewFolder",
     "\\FileSharingAPI\\Properties",
     "\\FileSharingAPI\\Repositories",
     "\\FileSharingAPI\\Services",
     "\\FileSharingAPI\\wwwroot"
   ],
+  "SelectedNode": "\\FileSharingAPI.Tests\\FilesControllerTests.cs",
   "PreviewInSolutionExplorer": false
 }
