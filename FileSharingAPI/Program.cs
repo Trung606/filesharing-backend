@@ -5,21 +5,30 @@ using FileSharingAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// 1. ADD CORS POLICY HERE
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowVueFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173") // Hieu's Vue dev server
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Register PostgreSQL DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-// Register the Repository
+
 builder.Services.AddScoped<IFileRepository, FileRepository>();
+builder.Services.AddScoped<IStorageService, LocalStorageService>();
 builder.Services.AddHostedService<FileCleanupService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -27,10 +36,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// 2. INJECT CORS MIDDLEWARE HERE (Must be before Authorization)
+app.UseCors("AllowVueFrontend");
+
 app.UseAuthorization();
 app.MapControllers();
 
-// Apply any pending EF Core migrations automatically on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();

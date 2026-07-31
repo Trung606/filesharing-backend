@@ -1,0 +1,10 @@
+﻿# .NET Core
+bin/
+obj/
+
+# User Uploads
+wwwroot/uploads/
+!wwwroot/uploads/.keep
+
+# Environment variables (if you ever add a .env file)
+.env

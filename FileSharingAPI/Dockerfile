@@ -2,12 +2,14 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# Copy the project file and restore dependencies
+# 1. REVERTED: Paths are back to targeting the current directory directly
 COPY ["FileSharingAPI.csproj", "./"]
 RUN dotnet restore "FileSharingAPI.csproj"
 
 # Copy all remaining source code files
 COPY . .
+
+# 2. REVERTED: Build from the current directory context
 WORKDIR "/src/."
 RUN dotnet build "FileSharingAPI.csproj" -c Release -o /app/build
 
