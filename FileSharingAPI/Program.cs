@@ -3,7 +3,13 @@ using FileSharingAPI.Repositories;
 using Microsoft.EntityFrameworkCore;
 using FileSharingAPI.Services;
 
-var builder = WebApplication.CreateBuilder(args);
+var options = new WebApplicationOptions
+{
+    Args = args,
+    // Disable configuration reload on change to prevent inotify limit crashes on Render
+    ContentRootPath = Directory.GetCurrentDirectory()
+};
+var builder = WebApplication.CreateBuilder(options);
 
 // 1. ADD CORS POLICY HERE
 builder.Services.AddCors(options =>
