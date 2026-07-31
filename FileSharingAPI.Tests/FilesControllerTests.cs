@@ -187,14 +187,17 @@ namespace FileSharingAPI.Tests
         [Fact]
         public async Task DownloadFile_PhysicalFileMissing_ReturnsNotFound()
         {
-            // Path.GetTempPath() generates a 100% valid absolute path dynamically 
-            // based on the OS (e.g., C:\Temp\ on Windows, or /tmp/ on Linux).
+            // 1. Safe cross-platform path
             string crossPlatformMissingPath = Path.Combine(Path.GetTempPath(), "fake_path_that_does_not_exist.jpg");
 
+            // 2. A FULLY valid mock object so it passes the expiration/limit checks
             var validMetadataMissingFile = new FileMetadata
             {
                 Code = "NOFILE",
-                StoragePath = crossPlatformMissingPath
+                StoragePath = crossPlatformMissingPath,
+                ExpirationDate = DateTime.UtcNow.AddDays(7), // Force it into the future!
+                MaxDownloads = 100,                          // Ensure it has downloads left
+                DownloadCount = 0
             };
 
             _mockRepo.Setup(r => r.GetByCodeAsync("NOFILE")).ReturnsAsync(validMetadataMissingFile);
