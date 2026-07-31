@@ -188,11 +188,12 @@ namespace FileSharingAPI.Tests
         [Fact]
         public async Task DownloadFile_PhysicalFileMissing_ReturnsNotFound()
         {
-            // Valid metadata, but the physical file path points to nowhere
+            // Valid metadata, but the physical file path points to nowhere.
+            // Using a simple relative path so it doesn't crash the Linux CI/CD server
             var validMetadataMissingFile = new FileMetadata
             {
                 Code = "NOFILE",
-                StoragePath = "C:\\fake_path_that_does_not_exist.jpg"
+                StoragePath = "fake_path_that_does_not_exist.jpg"
             };
             _mockRepo.Setup(r => r.GetByCodeAsync("NOFILE")).ReturnsAsync(validMetadataMissingFile);
 
