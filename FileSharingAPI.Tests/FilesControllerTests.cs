@@ -184,17 +184,19 @@ namespace FileSharingAPI.Tests
             Assert.Equal(410, objectResult.StatusCode);
             Assert.Contains("This link has expired", objectResult.Value.ToString());
         }
-
         [Fact]
         public async Task DownloadFile_PhysicalFileMissing_ReturnsNotFound()
         {
-            // Valid metadata, but the physical file path points to nowhere.
-            // Using a simple relative path so it doesn't crash the Linux CI/CD server
+            // Path.GetTempPath() generates a 100% valid absolute path dynamically 
+            // based on the OS (e.g., C:\Temp\ on Windows, or /tmp/ on Linux).
+            string crossPlatformMissingPath = Path.Combine(Path.GetTempPath(), "fake_path_that_does_not_exist.jpg");
+
             var validMetadataMissingFile = new FileMetadata
             {
                 Code = "NOFILE",
-                StoragePath = "fake_path_that_does_not_exist.jpg"
+                StoragePath = crossPlatformMissingPath
             };
+
             _mockRepo.Setup(r => r.GetByCodeAsync("NOFILE")).ReturnsAsync(validMetadataMissingFile);
 
             var result = await _controller.DownloadFile("NOFILE");
