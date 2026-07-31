@@ -195,7 +195,7 @@ namespace FileSharingAPI.Tests
             {
                 Code = "NOFILE",
                 StoragePath = crossPlatformMissingPath,
-                ExpirationDate = DateTime.UtcNow.AddDays(7), // Force it into the future!
+                ExpiresAt = DateTime.UtcNow.AddDays(7), // Force it into the future!
                 MaxDownloads = 100,                          // Ensure it has downloads left
                 DownloadCount = 0
             };
