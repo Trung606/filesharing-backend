@@ -14,9 +14,12 @@ var builder = WebApplication.CreateBuilder(options);
 // 1. ADD CORS POLICY HERE
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowVueFrontend", policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173") // Hieu's Vue dev server
+        policy.WithOrigins(
+                "http://localhost:5173", // Keep local testing alive
+                "https://file-sharing-fe-coat.onrender.com" // Your live frontend URL
+              )
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -44,7 +47,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 // 2. INJECT CORS MIDDLEWARE HERE (Must be before Authorization)
-app.UseCors("AllowVueFrontend");
+app.UseCors("AllowFrontend");
 
 app.UseAuthorization();
 app.MapControllers();
