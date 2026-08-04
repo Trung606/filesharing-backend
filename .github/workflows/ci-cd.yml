@@ -1,53 +1,42 @@
-name: Backend CI/CD Pipeline
+name: CI/CD Pipeline
 
-# Triggers the workflow on push or pull request events for the "main" branch
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
 
 jobs:
-  # JOB 1: Build the C# code and run your xUnit tests
-  build-and-test:
+  build-and-push:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout Code
+    - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup .NET 9.0
-      uses: actions/setup-dotnet@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
       with:
-        dotnet-version: '9.0.x'
+        node-version: 18
 
-    - name: Restore dependencies
-      run: dotnet restore
+    - name: Install dependencies
+      run: npm install
 
-    - name: Build Project
-      run: dotnet build --no-restore --configuration Release
+    - name: Run Linter
+      run: npm run lint
 
-    - name: Run Unit Tests
-      run: dotnet test --no-build --configuration Release --verbosity normal
-
-  # JOB 2: If tests pass, build the Docker container and push to Docker Hub
-  docker-push:
-    needs: build-and-test # This ensures the push ONLY happens if tests succeed!
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+    - name: Run Tests
+      run: npm run test.unit
 
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
       with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Build and Push Docker Image
+    - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ./FileSharingAPI
-        file: ./FileSharingAPI/Dockerfile
+        context: .
         push: true
-        # This tags the image as 'yourusername/filesharing-api:latest'
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/filesharing-api:latest
+        tags: ${{ secrets.DOCKER_USERNAME }}/file-sharing-fe:latest

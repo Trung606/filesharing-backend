@@ -33,7 +33,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IFileRepository, FileRepository>();
-builder.Services.AddScoped<IStorageService, LocalStorageService>();
+builder.Services.AddScoped<IStorageService, CloudinaryStorageService>();
 builder.Services.AddHostedService<FileCleanupService>();
 
 var app = builder.Build();

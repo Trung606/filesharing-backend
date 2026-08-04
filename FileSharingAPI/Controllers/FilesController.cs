@@ -20,7 +20,10 @@ namespace FileSharingAPI.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadFile(IFormFile file)
+        public async Task<IActionResult> UploadFile(
+            IFormFile file,
+            [FromForm] int? maxDownloads,
+            [FromForm] int? expiryHours) // Accept the new parameters here
         {
             if (file == null || file.Length == 0)
                 return BadRequest(new { success = false, message = "No file uploaded." });
@@ -30,8 +33,6 @@ namespace FileSharingAPI.Controllers
                 return BadRequest(new { success = false, message = "File exceeds the 10 MB limit." });
 
             var uniqueCode = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
-
-            // 3. Delegate the saving logic to the Storage Service!
             string savedPath = await _storage.SaveFileAsync(file, uniqueCode);
 
             var metadata = new FileMetadata
@@ -40,18 +41,15 @@ namespace FileSharingAPI.Controllers
                 OriginalFileName = file.FileName,
                 MimeType = file.ContentType,
                 SizeBytes = file.Length,
-                StoragePath = savedPath, // Use the path returned by the service
-                MaxDownloads = 10,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
+                StoragePath = savedPath,
+                // NEW: Apply the user's settings, fallback to defaults if null
+                MaxDownloads = maxDownloads ?? 100,
+                ExpiresAt = expiryHours.HasValue ? DateTime.UtcNow.AddHours(expiryHours.Value) : null
             };
 
             await _repo.AddAsync(metadata);
 
-            return StatusCode(StatusCodes.Status201Created, new
-            {
-                success = true,
-                data = metadata
-            });
+            return StatusCode(StatusCodes.Status201Created, new { success = true, data = metadata });
         }
 
         [HttpGet("{code}")]
@@ -84,14 +82,11 @@ namespace FileSharingAPI.Controllers
             if (metadata.DownloadCount >= metadata.MaxDownloads)
                 return StatusCode(StatusCodes.Status410Gone, "Maximum download limit reached.");
 
-            if (!System.IO.File.Exists(metadata.StoragePath))
-                return NotFound("The physical file is missing from the server.");
-
             metadata.DownloadCount++;
             await _repo.UpdateAsync(metadata);
 
-            var stream = new FileStream(metadata.StoragePath, FileMode.Open, FileAccess.Read);
-            return File(stream, metadata.MimeType, metadata.OriginalFileName);
+            // Redirect the user directly to the secure Cloudinary URL
+            return Redirect(metadata.StoragePath);
         }
     }
 }

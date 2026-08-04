@@ -1,0 +1,1394 @@
+﻿==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\.dockerignore
+==========================================
+**/.classpath
+**/.dockerignore
+**/.env
+**/.git
+**/.gitignore
+**/.project
+**/.settings
+**/.toolstarget
+**/.vs
+**/.vscode
+**/*.*proj.user
+**/*.dbmdl
+**/*.jfm
+**/azds.yaml
+**/bin
+**/charts
+**/docker-compose*
+**/Dockerfile*
+**/node_modules
+**/npm-debug.log
+**/obj
+**/secrets.dev.yaml
+**/values.dev.yaml
+LICENSE
+README.md
+!**/.gitignore
+!.git/HEAD
+!.git/config
+!.git/packed-refs
+!.git/refs/heads/**
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\.env
+==========================================
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\.gitignore
+==========================================
+.vs/ 
+TestResults/ 
+.tmp.driveupload/ 
+bin/ 
+obj/ 
+/.vs/slnx.sqlite
+/.gitignore
+/.gitignore
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharing Backend.slnx
+==========================================
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="FileSharingAPI.Tests/FileSharingAPI.Tests.csproj" Id="d4cc4aa6-0623-4d38-a6d7-611615250e0d" />
+  <Project Path="FileSharingAPI/FileSharingAPI.csproj" />
+</Solution>
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\README.md
+==========================================
+# File Sharing API - Backend Architecture
+
+A robust, containerized ASP.NET Core 9.0 backend built to handle secure file uploads, automated storage management, and metadata tracking. This repository contains the backend services, database configuration, and CI/CD pipelines.
+
+## ðŸš€ Tech Stack
+* **Framework:** C# / ASP.NET Core 9.0
+* **Database:** PostgreSQL (via Entity Framework Core)
+* **Containerization:** Docker & Docker Compose
+* **Testing:** xUnit & Moq
+* **CI/CD:** GitHub Actions -> Render
+
+## âš™ï¸ Key Features & Architecture
+* **Repository Pattern:** Strictly separates business logic from database interactions, allowing for highly modular and testable code.
+* **Automated Background Janitor:** Utilizes a custom `BackgroundService` with a `PeriodicTimer` and Scoped Dependency Injection to automatically delete expired files and database records every hour, completely independent of web traffic.
+* **Optimized File I/O:** Bypasses the database for physical file storage, writing raw byte streams directly to the local disk/container volume for maximum performance.
+* **Multi-Stage Docker Builds:** Compiles using the heavy .NET SDK but publishes to a lightweight ASP.NET runtime image, keeping production deployments fast and secure.
+* **Robust Validation:** Enforces strict 10MB upload limits and auto-generates unique 6-character GUID-based claim codes for secure sharing.
+
+## ðŸ› ï¸ How to Run Locally
+
+To test the full API and Database environment locally without affecting the live production server, you can use Docker Compose.
+
+**Prerequisites:**
+* Docker Desktop installed and running.
+
+**Steps:**
+1. Clone this repository to your local machine.
+2. Open a terminal in the root directory (where the docker-compose.yml file is located).
+3. Run the following command:
+`docker-compose up -d`
+4. Docker will automatically pull the postgres:14-alpine image, build the API container, and link them together. 
+5. The API will be accessible locally, and physical files/database rows will persist securely on your host machine via Docker Volumes.
+
+## ðŸ§ª Testing
+This project strictly enforces unit testing for all business logic using **xUnit** and **Moq**.
+By mocking the `IFileRepository` and `IStorageService` interfaces, the `FilesController` is tested in total isolationâ€”preventing test data from polluting the live database or filling up the hard drive.
+
+To run the test suite:
+`dotnet test`
+
+## ðŸ”„ CI/CD Pipeline
+This repository uses GitHub Actions for continuous integration and continuous deployment.
+* **On Push to main:** The pipeline automatically provisions an Ubuntu server, restores .NET 9 dependencies, and runs the entire xUnit test suite.
+* **Deployment Guard:** If any test fails, the pipeline halts. If all tests pass, it builds the Docker image and pushes the live code to the production environment on Render.
+
+asdasdaas
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\.github\workflows\ci-cd.yml
+==========================================
+name: Backend CI/CD Pipeline
+
+# Triggers the workflow on push or pull request events for the "main" branch
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # JOB 1: Build the C# code and run your xUnit tests
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 9.0
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build Project
+      run: dotnet build --no-restore --configuration Release
+
+    - name: Run Unit Tests
+      run: dotnet test --no-build --configuration Release --verbosity normal
+
+  # JOB 2: If tests pass, build the Docker container and push to Docker Hub
+  docker-push:
+    needs: build-and-test # This ensures the push ONLY happens if tests succeed!
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and Push Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./FileSharingAPI
+        file: ./FileSharingAPI/Dockerfile
+        push: true
+        # This tags the image as 'yourusername/filesharing-api:latest'
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/filesharing-api:latest
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\.env
+==========================================
+DB_PASSWORD=yourpassword
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\.gitignore
+==========================================
+# .NET Core
+bin/
+obj/
+
+# User Uploads
+wwwroot/uploads/
+!wwwroot/uploads/.keep
+
+# Environment variables (if you ever add a .env file)
+.env
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\appsettings.Development.json
+==========================================
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\appsettings.json
+==========================================
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=dpg-d9mbs167bikc73f33fug-a.singapore-postgres.render.com;Port=5432;Database=filesharing_db_mwx0;Username=filesharing_db_mwx0_user;Password=gBZISCOVh9kOwQLuxUWt2rou96EUqXFX"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\docker-compose.yml
+==========================================
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: filesharing-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=FileSharingDb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: filesharing-api
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=FileSharingDb;Username=postgres;Password=${DB_PASSWORD}
+    depends_on:
+      - db
+    volumes:
+      # This saves the physical files to your host machine so they don't get deleted
+      - file_uploads:/app/wwwroot/uploads 
+
+volumes:
+  pgdata:
+  file_uploads: # Declare the new volume here
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Dockerfile
+==========================================
+# Stage 1: Build the application using the .NET 9 SDK
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# 1. REVERTED: Paths are back to targeting the current directory directly
+COPY ["FileSharingAPI.csproj", "./"]
+RUN dotnet restore "FileSharingAPI.csproj"
+
+# Copy all remaining source code files
+COPY . .
+
+# 2. REVERTED: Build from the current directory context
+WORKDIR "/src/."
+RUN dotnet build "FileSharingAPI.csproj" -c Release -o /app/build
+
+# Stage 2: Publish the application
+FROM build AS publish
+RUN dotnet publish "FileSharingAPI.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# Stage 3: Final runtime image (lightweight)
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+WORKDIR /app
+EXPOSE 8080
+EXPOSE 8081
+
+# Copy published files from the build stage
+COPY --from=publish /app/publish .
+
+# Set the entry point to run your compiled API
+ENTRYPOINT ["dotnet", "FileSharingAPI.dll"]
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\FileSharingAPI.csproj
+==========================================
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>9ef3d025-12a8-44d7-9e0b-a2ffc48ce320</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.*">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.*">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.*" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Controllers\" />
+  </ItemGroup>
+
+</Project>
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\FileSharingAPI.http
+==========================================
+@FileSharingAPI_HostAddress = http://localhost:5278
+
+GET {{FileSharingAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Program.cs
+==========================================
+using FileSharingAPI.Data;
+using FileSharingAPI.Repositories;
+using Microsoft.EntityFrameworkCore;
+using FileSharingAPI.Services;
+
+var options = new WebApplicationOptions
+{
+    Args = args,
+    // Disable configuration reload on change to prevent inotify limit crashes on Render
+    ContentRootPath = Directory.GetCurrentDirectory()
+};
+var builder = WebApplication.CreateBuilder(options);
+
+// 1. ADD CORS POLICY HERE
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:5173", // Keep local testing alive
+                "https://file-sharing-fe-coat.onrender.com" // Your live frontend URL
+              )
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<IFileRepository, FileRepository>();
+builder.Services.AddScoped<IStorageService, LocalStorageService>();
+builder.Services.AddHostedService<FileCleanupService>();
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+// 2. INJECT CORS MIDDLEWARE HERE (Must be before Authorization)
+app.UseCors("AllowFrontend");
+
+app.UseAuthorization();
+app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
+
+app.Run();
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\.vs\VSWorkspaceState.json
+==========================================
+{
+  "ExpandedNodes": [
+    "",
+    "\\Services",
+    "\\wwwroot",
+    "\\wwwroot\\uploads"
+  ],
+  "SelectedNode": "\\wwwroot\\uploads\\.keep",
+  "PreviewInSolutionExplorer": false
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\.vs\FileSharingAPI.slnx\v18\DocumentLayout.json
+==========================================
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Admin\\source\\repos\\FileSharing Backend\\FileSharingAPI\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\source\\repos\\FileSharing Backend\\FileSharingAPI\\.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\source\\repos\\FileSharing Backend\\FileSharingAPI\\wwwroot\\uploads\\.keep||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:wwwroot\\uploads\\.keep||{8B382828-6202-11D1-8870-0000F87579D2}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": ".gitignore",
+              "DocumentMoniker": "C:\\Users\\Admin\\source\\repos\\FileSharing Backend\\FileSharingAPI\\.gitignore",
+              "RelativeDocumentMoniker": ".gitignore",
+              "ToolTip": "C:\\Users\\Admin\\source\\repos\\FileSharing Backend\\FileSharingAPI\\.gitignore",
+              "RelativeToolTip": ".gitignore",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-07-23T17:29:42.01Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": ".keep",
+              "DocumentMoniker": "C:\\Users\\Admin\\source\\repos\\FileSharing Backend\\FileSharingAPI\\wwwroot\\uploads\\.keep",
+              "RelativeDocumentMoniker": "wwwroot\\uploads\\.keep",
+              "ToolTip": "C:\\Users\\Admin\\source\\repos\\FileSharing Backend\\FileSharingAPI\\wwwroot\\uploads\\.keep",
+              "RelativeToolTip": "wwwroot\\uploads\\.keep",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-07-23T17:29:12.614Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Controllers\FilesController.cs
+==========================================
+using Microsoft.AspNetCore.Mvc;
+using FileSharingAPI.Models;
+using FileSharingAPI.Repositories;
+using FileSharingAPI.Services; // Make sure this is here!
+
+namespace FileSharingAPI.Controllers
+{
+    [ApiController]
+    [Route("api/v1/files")]
+    public class FilesController : ControllerBase
+    {
+        private readonly IFileRepository _repo;
+        private readonly IStorageService _storage; // 1. Add the storage service
+
+        // 2. Inject both the repository and the storage service into the constructor
+        public FilesController(IFileRepository repo, IStorageService storage)
+        {
+            _repo = repo;
+            _storage = storage;
+        }
+
+        [HttpPost("upload")]
+        public async Task<IActionResult> UploadFile(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { success = false, message = "No file uploaded." });
+
+            long maxFileSize = 10 * 1024 * 1024; // 10 MB
+            if (file.Length > maxFileSize)
+                return BadRequest(new { success = false, message = "File exceeds the 10 MB limit." });
+
+            var uniqueCode = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
+
+            // 3. Delegate the saving logic to the Storage Service!
+            string savedPath = await _storage.SaveFileAsync(file, uniqueCode);
+
+            var metadata = new FileMetadata
+            {
+                Code = uniqueCode,
+                OriginalFileName = file.FileName,
+                MimeType = file.ContentType,
+                SizeBytes = file.Length,
+                StoragePath = savedPath, // Use the path returned by the service
+                MaxDownloads = 10,
+                ExpiresAt = DateTime.UtcNow.AddDays(7)
+            };
+
+            await _repo.AddAsync(metadata);
+
+            return StatusCode(StatusCodes.Status201Created, new
+            {
+                success = true,
+                data = metadata
+            });
+        }
+
+        [HttpGet("{code}")]
+        public async Task<IActionResult> GetFileInfo(string code)
+        {
+            var metadata = await _repo.GetByCodeAsync(code);
+            if (metadata == null)
+                return NotFound(new { success = false, message = "File not found." });
+
+            if (metadata.ExpiresAt.HasValue && DateTime.UtcNow > metadata.ExpiresAt.Value)
+                return StatusCode(StatusCodes.Status410Gone, new { success = false, message = "Link expired." });
+
+            if (metadata.DownloadCount >= metadata.MaxDownloads)
+                return StatusCode(StatusCodes.Status410Gone, new { success = false, message = "Download limit reached." });
+
+            return Ok(new { success = true, data = metadata });
+        }
+
+        [HttpGet("download/{code}")]
+        public async Task<IActionResult> DownloadFile(string code)
+        {
+            var metadata = await _repo.GetByCodeAsync(code);
+
+            if (metadata == null)
+                return NotFound("File not found.");
+
+            if (metadata.ExpiresAt.HasValue && DateTime.UtcNow > metadata.ExpiresAt.Value)
+                return StatusCode(StatusCodes.Status410Gone, "This link has expired.");
+
+            if (metadata.DownloadCount >= metadata.MaxDownloads)
+                return StatusCode(StatusCodes.Status410Gone, "Maximum download limit reached.");
+
+            if (!System.IO.File.Exists(metadata.StoragePath))
+                return NotFound("The physical file is missing from the server.");
+
+            metadata.DownloadCount++;
+            await _repo.UpdateAsync(metadata);
+
+            var stream = new FileStream(metadata.StoragePath, FileMode.Open, FileAccess.Read);
+            return File(stream, metadata.MimeType, metadata.OriginalFileName);
+        }
+    }
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Data\ApplicationDbContext.cs
+==========================================
+using Microsoft.EntityFrameworkCore;
+using FileSharingAPI.Models;
+
+namespace FileSharingAPI.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options) { }
+
+        // This creates the "Files" table based on your FileMetadata model
+        public DbSet<FileMetadata> Files => Set<FileMetadata>();
+    }
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Migrations\20260718081353_InitialCreate.cs
+==========================================
+using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace FileSharingAPI.Migrations
+{
+    /// <inheritdoc />
+    public partial class InitialCreate : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.CreateTable(
+                name: "Files",
+                columns: table => new
+                {
+                    Code = table.Column<string>(type: "text", nullable: false),
+                    OriginalFileName = table.Column<string>(type: "text", nullable: false),
+                    MimeType = table.Column<string>(type: "text", nullable: false),
+                    SizeBytes = table.Column<long>(type: "bigint", nullable: false),
+                    StoragePath = table.Column<string>(type: "text", nullable: false),
+                    MaxDownloads = table.Column<int>(type: "integer", nullable: false),
+                    DownloadCount = table.Column<int>(type: "integer", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Files", x => x.Code);
+                });
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "Files");
+        }
+    }
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Migrations\20260718081353_InitialCreate.Designer.cs
+==========================================
+// <auto-generated />
+using System;
+using FileSharingAPI.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+
+#nullable disable
+
+namespace FileSharingAPI.Migrations
+{
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20260718081353_InitialCreate")]
+    partial class InitialCreate
+    {
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        {
+#pragma warning disable 612, 618
+            modelBuilder
+                .HasAnnotation("ProductVersion", "9.0.18")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("FileSharingAPI.Models.FileMetadata", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DownloadCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MaxDownloads")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Code");
+
+                    b.ToTable("Files");
+                });
+#pragma warning restore 612, 618
+        }
+    }
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Migrations\ApplicationDbContextModelSnapshot.cs
+==========================================
+// <auto-generated />
+using System;
+using FileSharingAPI.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+
+#nullable disable
+
+namespace FileSharingAPI.Migrations
+{
+    [DbContext(typeof(ApplicationDbContext))]
+    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    {
+        protected override void BuildModel(ModelBuilder modelBuilder)
+        {
+#pragma warning disable 612, 618
+            modelBuilder
+                .HasAnnotation("ProductVersion", "9.0.18")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("FileSharingAPI.Models.FileMetadata", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DownloadCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MaxDownloads")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Code");
+
+                    b.ToTable("Files");
+                });
+#pragma warning restore 612, 618
+        }
+    }
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Models\FileMetadata.cs
+==========================================
+using System;
+using System.ComponentModel.DataAnnotations;
+
+namespace FileSharingAPI.Models
+{
+    public class FileMetadata
+    {
+        // Explicitly defining the string as the Primary Key
+        [Key]
+        public string Code { get; set; } = string.Empty;
+
+        public string OriginalFileName { get; set; } = string.Empty;
+
+        public string MimeType { get; set; } = string.Empty;
+
+        public long SizeBytes { get; set; }
+
+        public string StoragePath { get; set; } = string.Empty;
+
+        public int MaxDownloads { get; set; }
+
+        public int DownloadCount { get; set; } = 0;
+
+        public DateTime? ExpiresAt { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Properties\launchSettings.json
+==========================================
+{
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "dotnetRunMessages": true,
+      "applicationUrl": "http://localhost:5278"
+    },
+    "https": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "dotnetRunMessages": true,
+      "applicationUrl": "https://localhost:7110;http://localhost:5278"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker",
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
+      "environmentVariables": {
+        "ASPNETCORE_HTTPS_PORTS": "8081",
+        "ASPNETCORE_HTTP_PORTS": "8080"
+      },
+      "publishAllPorts": true,
+      "useSSL": true
+    }
+  },
+  "$schema": "https://json.schemastore.org/launchsettings.json"
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Repositories\FileRepository.cs
+==========================================
+using Microsoft.EntityFrameworkCore;
+using FileSharingAPI.Data;
+using FileSharingAPI.Models;
+
+namespace FileSharingAPI.Repositories
+{
+    public class FileRepository : IFileRepository
+    {
+        private readonly ApplicationDbContext _context;
+
+        public FileRepository(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<FileMetadata> AddAsync(FileMetadata file)
+        {
+            _context.Files.Add(file);
+            await _context.SaveChangesAsync();
+            return file;
+        }
+
+        public async Task<FileMetadata?> GetByCodeAsync(string code)
+        {
+            return await _context.Files.FirstOrDefaultAsync(f => f.Code == code);
+        }
+        public async Task<FileMetadata?> UpdateAsync(FileMetadata file)
+        {
+            _context.Files.Update(file);
+            await _context.SaveChangesAsync();
+            return file;
+        }
+
+        public async Task<IEnumerable<FileMetadata>> GetExpiredFilesAsync()
+        {
+            // Find files where the expiration date has passed OR the download limit is reached
+            return await _context.Files
+                .Where(f => (f.ExpiresAt.HasValue && DateTime.UtcNow > f.ExpiresAt.Value)
+                         || f.DownloadCount >= f.MaxDownloads)
+                .ToListAsync();
+        }
+
+        public async Task DeleteAsync(string code)
+        {
+            var file = await _context.Files.FirstOrDefaultAsync(f => f.Code == code);
+            if (file != null)
+            {
+                _context.Files.Remove(file);
+                await _context.SaveChangesAsync();
+            }
+        }
+    }
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Repositories\IFileRepository.cs
+==========================================
+using FileSharingAPI.Models;
+
+namespace FileSharingAPI.Repositories
+{
+    public interface IFileRepository
+    {
+        Task<FileMetadata> AddAsync(FileMetadata file);
+        Task<FileMetadata?> GetByCodeAsync(string code);
+
+        // New methods for Module 3
+        Task<FileMetadata?> UpdateAsync(FileMetadata file);
+        Task<IEnumerable<FileMetadata>> GetExpiredFilesAsync();
+        Task DeleteAsync(string code);
+    }
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Services\FileCleanupService.cs
+==========================================
+using FileSharingAPI.Repositories;
+
+namespace FileSharingAPI.Services
+{
+    // Inheriting from BackgroundService allows this to run independently in the background
+    public class FileCleanupService : BackgroundService
+    {
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ILogger<FileCleanupService> _logger;
+
+        public FileCleanupService(IServiceScopeFactory scopeFactory, ILogger<FileCleanupService> logger)
+        {
+            _scopeFactory = scopeFactory;
+            _logger = logger;
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            // Set the timer to run the cleanup task every 1 hour
+            using var timer = new PeriodicTimer(TimeSpan.FromHours(1));
+
+            while (await timer.WaitForNextTickAsync(stoppingToken))
+            {
+                _logger.LogInformation("Running automated file cleanup task...");
+
+                // We must create a scope because the Repository is Scoped, but this worker is a Singleton
+                using var scope = _scopeFactory.CreateScope();
+                var repo = scope.ServiceProvider.GetRequiredService<IFileRepository>();
+
+                // Fetch dead files using the repo method you built
+                var expiredFiles = await repo.GetExpiredFilesAsync();
+
+                foreach (var file in expiredFiles)
+                {
+                    try
+                    {
+                        // 1. Delete the physical file from the local disk
+                        if (File.Exists(file.StoragePath))
+                        {
+                            File.Delete(file.StoragePath);
+                        }
+
+                        // 2. Delete the metadata row from the PostgreSQL database
+                        await repo.DeleteAsync(file.Code);
+
+                        _logger.LogInformation($"Successfully deleted expired file: {file.Code}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Failed to delete file: {file.Code}");
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Services\IStorageService.cs
+==========================================
+namespace FileSharingAPI.Services
+{
+    public interface IStorageService
+    {
+        Task<string> SaveFileAsync(IFormFile file, string uniqueCode);
+        Task DeleteFileAsync(string filePath);
+    }
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI\Services\LocalStorageService.cs
+==========================================
+namespace FileSharingAPI.Services
+{
+    public class LocalStorageService : IStorageService
+    {
+        public async Task<string> SaveFileAsync(IFormFile file, string uniqueCode)
+        {
+            var uploadDirectory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+            if (!Directory.Exists(uploadDirectory)) Directory.CreateDirectory(uploadDirectory);
+
+            var filePath = Path.Combine(uploadDirectory, $"{uniqueCode}_{file.FileName}");
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+            return filePath; // Return the path to save in the database
+        }
+
+        public Task DeleteFileAsync(string filePath)
+        {
+            if (File.Exists(filePath)) File.Delete(filePath);
+            return Task.CompletedTask;
+        }
+    }
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI.Tests\FilesControllerTests.cs
+==========================================
+using Xunit;
+using Moq;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
+using FileSharingAPI.Controllers;
+using FileSharingAPI.Repositories;
+using FileSharingAPI.Services;
+using FileSharingAPI.Models;
+using System.Threading.Tasks;
+using System;
+
+namespace FileSharingAPI.Tests
+{
+    public class FilesControllerTests
+    {
+        private readonly Mock<IFileRepository> _mockRepo;
+        private readonly Mock<IStorageService> _mockStorage;
+        private readonly FilesController _controller;
+
+        public FilesControllerTests()
+        {
+            // This runs before every single test
+            _mockRepo = new Mock<IFileRepository>();
+            _mockStorage = new Mock<IStorageService>();
+            _controller = new FilesController(_mockRepo.Object, _mockStorage.Object);
+        }
+
+        [Fact]
+        public async Task UploadFile_FileExceeds10MB_ReturnsBadRequest()
+        {
+            long elevenMegabytes = 11 * 1024 * 1024;
+            var mockFile = new Mock<IFormFile>();
+            mockFile.Setup(f => f.Length).Returns(elevenMegabytes);
+
+            var result = await _controller.UploadFile(mockFile.Object);
+
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Contains("File exceeds the 10 MB limit", badRequestResult.Value.ToString());
+        }
+
+        [Fact]
+        public async Task UploadFile_ValidFile_ReturnsCreatedResponse()
+        {
+            var mockFile = new Mock<IFormFile>();
+            mockFile.Setup(f => f.Length).Returns(1024); // 1 KB
+            mockFile.Setup(f => f.FileName).Returns("test_image.jpg");
+            mockFile.Setup(f => f.ContentType).Returns("image/jpeg");
+
+            // Fake the storage service so it returns a fake path
+            _mockStorage.Setup(s => s.SaveFileAsync(It.IsAny<IFormFile>(), It.IsAny<string>()))
+                        .ReturnsAsync("C:\\fake\\path\\test_image.jpg");
+
+            var result = await _controller.UploadFile(mockFile.Object);
+
+            var createdResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(201, createdResult.StatusCode);
+
+            // Verify the repository's AddAsync method was actually called exactly once
+            _mockRepo.Verify(r => r.AddAsync(It.IsAny<FileMetadata>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetFileInfo_FileNotFound_ReturnsNotFound()
+        {
+            // Tell the fake repo to return null when asked for a file
+            _mockRepo.Setup(r => r.GetByCodeAsync("FAKECD")).ReturnsAsync((FileMetadata)null);
+
+            var result = await _controller.GetFileInfo("FAKECD");
+
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.Contains("File not found", notFoundResult.Value.ToString());
+        }
+
+        [Fact]
+        public async Task GetFileInfo_ValidCode_ReturnsOk()
+        {
+            var validFile = new FileMetadata
+            {
+                Code = "VALID1",
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
+                DownloadCount = 0,
+                MaxDownloads = 10
+            };
+
+            _mockRepo.Setup(r => r.GetByCodeAsync("VALID1")).ReturnsAsync(validFile);
+
+            var result = await _controller.GetFileInfo("VALID1");
+
+            Assert.IsType<OkObjectResult>(result);
+        }
+
+        [Fact]
+        public async Task DownloadFile_DownloadLimitReached_ReturnsGone()
+        {
+            var limitReachedFile = new FileMetadata
+            {
+                Code = "MAXOUT",
+                DownloadCount = 10,
+                MaxDownloads = 10
+            };
+
+            _mockRepo.Setup(r => r.GetByCodeAsync("MAXOUT")).ReturnsAsync(limitReachedFile);
+
+            var result = await _controller.DownloadFile("MAXOUT");
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(410, objectResult.StatusCode); // 410 Gone
+            Assert.Contains("Maximum download limit reached", objectResult.Value.ToString());
+        }
+        // --- MISSING UPLOAD TEST ---
+        [Fact]
+        public async Task UploadFile_EmptyFile_ReturnsBadRequest()
+        {
+            var mockFile = new Mock<IFormFile>();
+            mockFile.Setup(f => f.Length).Returns(0); // Simulate empty file
+
+            var result = await _controller.UploadFile(mockFile.Object);
+
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Contains("No file uploaded", badRequestResult.Value.ToString());
+        }
+
+        // --- MISSING GET FILE INFO TESTS ---
+        [Fact]
+        public async Task GetFileInfo_FileExpired_ReturnsGone()
+        {
+            var expiredFile = new FileMetadata
+            {
+                Code = "EXPIRED",
+                ExpiresAt = DateTime.UtcNow.AddDays(-1) // Set in the past
+            };
+            _mockRepo.Setup(r => r.GetByCodeAsync("EXPIRED")).ReturnsAsync(expiredFile);
+
+            var result = await _controller.GetFileInfo("EXPIRED");
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(410, objectResult.StatusCode);
+            Assert.Contains("Link expired", objectResult.Value.ToString());
+        }
+
+        [Fact]
+        public async Task GetFileInfo_DownloadLimitReached_ReturnsGone()
+        {
+            var limitReachedFile = new FileMetadata
+            {
+                Code = "MAXOUT",
+                DownloadCount = 10,
+                MaxDownloads = 10
+            };
+            _mockRepo.Setup(r => r.GetByCodeAsync("MAXOUT")).ReturnsAsync(limitReachedFile);
+
+            var result = await _controller.GetFileInfo("MAXOUT");
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(410, objectResult.StatusCode);
+            Assert.Contains("Download limit reached", objectResult.Value.ToString());
+        }
+
+        // --- MISSING DOWNLOAD TESTS ---
+        [Fact]
+        public async Task DownloadFile_FileNotFound_ReturnsNotFound()
+        {
+            _mockRepo.Setup(r => r.GetByCodeAsync("MISSING")).ReturnsAsync((FileMetadata)null);
+
+            var result = await _controller.DownloadFile("MISSING");
+
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.Contains("File not found", notFoundResult.Value.ToString());
+        }
+
+        [Fact]
+        public async Task DownloadFile_FileExpired_ReturnsGone()
+        {
+            var expiredFile = new FileMetadata
+            {
+                Code = "EXPIRED",
+                ExpiresAt = DateTime.UtcNow.AddDays(-1)
+            };
+            _mockRepo.Setup(r => r.GetByCodeAsync("EXPIRED")).ReturnsAsync(expiredFile);
+
+            var result = await _controller.DownloadFile("EXPIRED");
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(410, objectResult.StatusCode);
+            Assert.Contains("This link has expired", objectResult.Value.ToString());
+        }
+        [Fact]
+        public async Task DownloadFile_PhysicalFileMissing_ReturnsNotFound()
+        {
+            // 1. Safe cross-platform path
+            string crossPlatformMissingPath = Path.Combine(Path.GetTempPath(), "fake_path_that_does_not_exist.jpg");
+
+            // 2. A FULLY valid mock object so it passes the expiration/limit checks
+            var validMetadataMissingFile = new FileMetadata
+            {
+                Code = "NOFILE",
+                StoragePath = crossPlatformMissingPath,
+                ExpiresAt = DateTime.UtcNow.AddDays(7), // Force it into the future!
+                MaxDownloads = 100,                          // Ensure it has downloads left
+                DownloadCount = 0
+            };
+
+            _mockRepo.Setup(r => r.GetByCodeAsync("NOFILE")).ReturnsAsync(validMetadataMissingFile);
+
+            var result = await _controller.DownloadFile("NOFILE");
+
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.Contains("physical file is missing", notFoundResult.Value.ToString());
+        }
+        [Fact]
+        public async Task UploadFile_NullFile_ReturnsBadRequest()
+        {
+            // Act by passing null directly instead of a mocked file
+            var result = await _controller.UploadFile(null);
+
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Contains("No file uploaded", badRequestResult.Value.ToString());
+        }
+        [Fact]
+        public async Task DownloadFile_ValidFile_ReturnsFileStream()
+        {
+            // 1. ARRANGE
+            var tempFilePath = Path.GetTempFileName();
+            System.IO.File.WriteAllText(tempFilePath, "test file content");
+
+            try
+            {
+                var validFile = new FileMetadata
+                {
+                    Code = "ABC123",
+                    StoragePath = tempFilePath,
+                    MimeType = "text/plain",
+                    OriginalFileName = "test.txt",
+                    DownloadCount = 0,
+                    MaxDownloads = 10,
+                    ExpiresAt = null
+                };
+
+                _mockRepo.Setup(r => r.GetByCodeAsync("ABC123")).ReturnsAsync(validFile);
+
+                // 2. ACT
+                var result = await _controller.DownloadFile("ABC123");
+
+                // 3. ASSERT
+                var fileResult = Assert.IsType<FileStreamResult>(result);
+                Assert.Equal("text/plain", fileResult.ContentType);
+
+                // FIX: Explicitly dispose of the file stream so Windows releases the lock
+                if (fileResult.FileStream != null)
+                {
+                    await fileResult.FileStream.DisposeAsync();
+                }
+            }
+            finally
+            {
+                // 4. CLEANUP
+                if (System.IO.File.Exists(tempFilePath))
+                {
+                    System.IO.File.Delete(tempFilePath);
+                }
+            }
+        }
+        [Fact]
+        public async Task DownloadFile_ValidFileWithFutureExpiry_ReturnsFileStream()
+        {
+            // 1. ARRANGE
+            var tempFilePath = Path.GetTempFileName();
+            System.IO.File.WriteAllText(tempFilePath, "future file content");
+
+            try
+            {
+                var validFile = new FileMetadata
+                {
+                    Code = "FUTURE",
+                    StoragePath = tempFilePath,
+                    MimeType = "text/plain",
+                    OriginalFileName = "future.txt",
+                    DownloadCount = 0,
+                    MaxDownloads = 10,
+                    ExpiresAt = DateTime.UtcNow.AddDays(5)
+                };
+
+                _mockRepo.Setup(r => r.GetByCodeAsync("FUTURE")).ReturnsAsync(validFile);
+
+                // 2. ACT
+                var result = await _controller.DownloadFile("FUTURE");
+
+                // 3. ASSERT
+                var fileResult = Assert.IsType<FileStreamResult>(result);
+                Assert.Equal("text/plain", fileResult.ContentType);
+
+                // FIX: Explicitly dispose of the file stream so Windows releases the lock
+                if (fileResult.FileStream != null)
+                {
+                    await fileResult.FileStream.DisposeAsync();
+                }
+            }
+            finally
+            {
+                // 4. CLEANUP
+                if (System.IO.File.Exists(tempFilePath))
+                {
+                    System.IO.File.Delete(tempFilePath);
+                }
+            }
+        }
+    }
+}
+
+
+==========================================
+FILE: C:\Users\Admin\source\repos\FileSharing Backend\FileSharingAPI.Tests\FileSharingAPI.Tests.csproj
+==========================================
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+	  <FrameworkReference Include="Microsoft.AspNetCore.App"/>
+    <PackageReference Include="coverlet.collector" Version="10.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FileSharingAPI\FileSharingAPI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
+
+
