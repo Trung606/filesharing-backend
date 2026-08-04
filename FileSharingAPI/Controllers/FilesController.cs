@@ -22,8 +22,8 @@ namespace FileSharingAPI.Controllers
         [HttpPost("upload")]
         public async Task<IActionResult> UploadFile(
             IFormFile file,
-            [FromForm] int? maxDownloads,
-            [FromForm] int? expiryHours) // Accept the new parameters here
+            [FromForm] int? maxDownloads = null,   // <-- Add = null default value
+            [FromForm] int? expiryHours = null)    // <-- Add = null default value
         {
             if (file == null || file.Length == 0)
                 return BadRequest(new { success = false, message = "No file uploaded." });
@@ -42,7 +42,6 @@ namespace FileSharingAPI.Controllers
                 MimeType = file.ContentType,
                 SizeBytes = file.Length,
                 StoragePath = savedPath,
-                // NEW: Apply the user's settings, fallback to defaults if null
                 MaxDownloads = maxDownloads ?? 100,
                 ExpiresAt = expiryHours.HasValue ? DateTime.UtcNow.AddHours(expiryHours.Value) : null
             };
