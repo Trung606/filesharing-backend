@@ -8,6 +8,7 @@ using FileSharingAPI.Services;
 using FileSharingAPI.Models;
 using System.Threading.Tasks;
 using System;
+using System.IO;
 
 namespace FileSharingAPI.Tests
 {
@@ -46,9 +47,9 @@ namespace FileSharingAPI.Tests
             mockFile.Setup(f => f.FileName).Returns("test_image.jpg");
             mockFile.Setup(f => f.ContentType).Returns("image/jpeg");
 
-            // Fake the storage service so it returns a fake path
+            // Fake the storage service so it returns a fake cloud secure URL
             _mockStorage.Setup(s => s.SaveFileAsync(It.IsAny<IFormFile>(), It.IsAny<string>()))
-                        .ReturnsAsync("C:\\fake\\path\\test_image.jpg");
+                        .ReturnsAsync("https://res.cloudinary.com/lqcgpply/raw/upload/v1/test_image.jpg");
 
             var result = await _controller.UploadFile(mockFile.Object);
 
@@ -107,7 +108,8 @@ namespace FileSharingAPI.Tests
             Assert.Equal(410, objectResult.StatusCode); // 410 Gone
             Assert.Contains("Maximum download limit reached", objectResult.Value.ToString());
         }
-        // --- MISSING UPLOAD TEST ---
+
+        // --- UPLOAD TESTS ---
         [Fact]
         public async Task UploadFile_EmptyFile_ReturnsBadRequest()
         {
@@ -120,7 +122,7 @@ namespace FileSharingAPI.Tests
             Assert.Contains("No file uploaded", badRequestResult.Value.ToString());
         }
 
-        // --- MISSING GET FILE INFO TESTS ---
+        // --- GET FILE INFO TESTS ---
         [Fact]
         public async Task GetFileInfo_FileExpired_ReturnsGone()
         {
@@ -156,7 +158,7 @@ namespace FileSharingAPI.Tests
             Assert.Contains("Download limit reached", objectResult.Value.ToString());
         }
 
-        // --- MISSING DOWNLOAD TESTS ---
+        // --- DOWNLOAD TESTS ---
         [Fact]
         public async Task DownloadFile_FileNotFound_ReturnsNotFound()
         {
@@ -184,126 +186,88 @@ namespace FileSharingAPI.Tests
             Assert.Equal(410, objectResult.StatusCode);
             Assert.Contains("This link has expired", objectResult.Value.ToString());
         }
-        [Fact]
-        public async Task DownloadFile_PhysicalFileMissing_ReturnsNotFound()
-        {
-            // 1. Safe cross-platform path
-            string crossPlatformMissingPath = Path.Combine(Path.GetTempPath(), "fake_path_that_does_not_exist.jpg");
 
-            // 2. A FULLY valid mock object so it passes the expiration/limit checks
+        [Fact]
+        public async Task DownloadFile_PhysicalFileMissing_ReturnsRedirectResultAnyway()
+        {
+            // With Cloudinary, files live in the cloud. The controller redirects to the asset URL directly.
             var validMetadataMissingFile = new FileMetadata
             {
                 Code = "NOFILE",
-                StoragePath = crossPlatformMissingPath,
-                ExpiresAt = DateTime.UtcNow.AddDays(7), // Force it into the future!
-                MaxDownloads = 100,                          // Ensure it has downloads left
+                StoragePath = "https://res.cloudinary.com/lqcgpply/raw/upload/v1/missing.jpg",
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+                MaxDownloads = 100,
                 DownloadCount = 0
             };
 
             _mockRepo.Setup(r => r.GetByCodeAsync("NOFILE")).ReturnsAsync(validMetadataMissingFile);
+            _mockRepo.Setup(r => r.UpdateAsync(It.IsAny<FileMetadata>())).ReturnsAsync(validMetadataMissingFile);
 
             var result = await _controller.DownloadFile("NOFILE");
 
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            Assert.Contains("physical file is missing", notFoundResult.Value.ToString());
+            var redirectResult = Assert.IsType<RedirectResult>(result);
+            Assert.Equal("https://res.cloudinary.com/lqcgpply/raw/upload/v1/missing.jpg", redirectResult.Url);
         }
+
         [Fact]
         public async Task UploadFile_NullFile_ReturnsBadRequest()
         {
-            // Act by passing null directly instead of a mocked file
             var result = await _controller.UploadFile(null);
 
-            // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
             Assert.Contains("No file uploaded", badRequestResult.Value.ToString());
         }
+
         [Fact]
-        public async Task DownloadFile_ValidFile_ReturnsFileStream()
+        public async Task DownloadFile_ValidFile_ReturnsRedirectResult()
         {
-            // 1. ARRANGE
-            var tempFilePath = Path.GetTempFileName();
-            System.IO.File.WriteAllText(tempFilePath, "test file content");
-
-            try
+            // Arrange
+            var validFile = new FileMetadata
             {
-                var validFile = new FileMetadata
-                {
-                    Code = "ABC123",
-                    StoragePath = tempFilePath,
-                    MimeType = "text/plain",
-                    OriginalFileName = "test.txt",
-                    DownloadCount = 0,
-                    MaxDownloads = 10,
-                    ExpiresAt = null
-                };
+                Code = "ABC123",
+                StoragePath = "https://res.cloudinary.com/lqcgpply/raw/upload/v1/test.txt",
+                MimeType = "text/plain",
+                OriginalFileName = "test.txt",
+                DownloadCount = 0,
+                MaxDownloads = 10,
+                ExpiresAt = null
+            };
 
-                _mockRepo.Setup(r => r.GetByCodeAsync("ABC123")).ReturnsAsync(validFile);
+            _mockRepo.Setup(r => r.GetByCodeAsync("ABC123")).ReturnsAsync(validFile);
+            _mockRepo.Setup(r => r.UpdateAsync(It.IsAny<FileMetadata>())).ReturnsAsync(validFile);
 
-                // 2. ACT
-                var result = await _controller.DownloadFile("ABC123");
+            // Act
+            var result = await _controller.DownloadFile("ABC123");
 
-                // 3. ASSERT
-                var fileResult = Assert.IsType<FileStreamResult>(result);
-                Assert.Equal("text/plain", fileResult.ContentType);
-
-                // FIX: Explicitly dispose of the file stream so Windows releases the lock
-                if (fileResult.FileStream != null)
-                {
-                    await fileResult.FileStream.DisposeAsync();
-                }
-            }
-            finally
-            {
-                // 4. CLEANUP
-                if (System.IO.File.Exists(tempFilePath))
-                {
-                    System.IO.File.Delete(tempFilePath);
-                }
-            }
+            // Assert
+            var redirectResult = Assert.IsType<RedirectResult>(result);
+            Assert.Contains("cloudinary.com", redirectResult.Url);
         }
+
         [Fact]
-        public async Task DownloadFile_ValidFileWithFutureExpiry_ReturnsFileStream()
+        public async Task DownloadFile_ValidFileWithFutureExpiry_ReturnsRedirectResult()
         {
-            // 1. ARRANGE
-            var tempFilePath = Path.GetTempFileName();
-            System.IO.File.WriteAllText(tempFilePath, "future file content");
-
-            try
+            // Arrange
+            var validFile = new FileMetadata
             {
-                var validFile = new FileMetadata
-                {
-                    Code = "FUTURE",
-                    StoragePath = tempFilePath,
-                    MimeType = "text/plain",
-                    OriginalFileName = "future.txt",
-                    DownloadCount = 0,
-                    MaxDownloads = 10,
-                    ExpiresAt = DateTime.UtcNow.AddDays(5)
-                };
+                Code = "FUTURE",
+                StoragePath = "https://res.cloudinary.com/lqcgpply/raw/upload/v1/future.txt",
+                MimeType = "text/plain",
+                OriginalFileName = "future.txt",
+                DownloadCount = 0,
+                MaxDownloads = 10,
+                ExpiresAt = DateTime.UtcNow.AddDays(5)
+            };
 
-                _mockRepo.Setup(r => r.GetByCodeAsync("FUTURE")).ReturnsAsync(validFile);
+            _mockRepo.Setup(r => r.GetByCodeAsync("FUTURE")).ReturnsAsync(validFile);
+            _mockRepo.Setup(r => r.UpdateAsync(It.IsAny<FileMetadata>())).ReturnsAsync(validFile);
 
-                // 2. ACT
-                var result = await _controller.DownloadFile("FUTURE");
+            // Act
+            var result = await _controller.DownloadFile("FUTURE");
 
-                // 3. ASSERT
-                var fileResult = Assert.IsType<FileStreamResult>(result);
-                Assert.Equal("text/plain", fileResult.ContentType);
-
-                // FIX: Explicitly dispose of the file stream so Windows releases the lock
-                if (fileResult.FileStream != null)
-                {
-                    await fileResult.FileStream.DisposeAsync();
-                }
-            }
-            finally
-            {
-                // 4. CLEANUP
-                if (System.IO.File.Exists(tempFilePath))
-                {
-                    System.IO.File.Delete(tempFilePath);
-                }
-            }
+            // Assert
+            var redirectResult = Assert.IsType<RedirectResult>(result);
+            Assert.Contains("cloudinary.com", redirectResult.Url);
         }
     }
 }
