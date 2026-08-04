@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+  </Folder>
   <Project Path="FileSharingAPI.Tests/FileSharingAPI.Tests.csproj" Id="d4cc4aa6-0623-4d38-a6d7-611615250e0d" />
   <Project Path="FileSharingAPI/FileSharingAPI.csproj" />
 </Solution>

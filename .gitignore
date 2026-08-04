@@ -3,3 +3,6 @@ TestResults/
 .tmp.driveupload/ 
 bin/ 
 obj/ 
+/.vs/slnx.sqlite
+/.gitignore
+/.gitignore
