@@ -269,5 +269,61 @@ namespace FileSharingAPI.Tests
             var redirectResult = Assert.IsType<RedirectResult>(result);
             Assert.Contains("cloudinary.com", redirectResult.Url);
         }
+        [Fact]
+        public async Task UploadFile_WithOptionalParameters_ReturnsCreatedResponse()
+        {
+            var mockFile = new Mock<IFormFile>();
+            mockFile.Setup(f => f.Length).Returns(1024);
+            mockFile.Setup(f => f.FileName).Returns("custom_test.pdf");
+            mockFile.Setup(f => f.ContentType).Returns("application/pdf");
+
+            _mockStorage.Setup(s => s.SaveFileAsync(It.IsAny<IFormFile>(), It.IsAny<string>()))
+                        .ReturnsAsync("https://res.cloudinary.com/fake/custom_test.pdf");
+
+            // Act: Explicitly pass in 50 for maxDownloads and 24 for expiryHours
+            var result = await _controller.UploadFile(mockFile.Object, 50, 24);
+
+            var createdResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(201, createdResult.StatusCode);
+
+            // Verify the repository AddAsync was called with our custom parameters successfully parsed
+            _mockRepo.Verify(r => r.AddAsync(It.Is<FileMetadata>(m =>
+                m.MaxDownloads == 50 &&
+                m.ExpiresAt.HasValue
+            )), Times.Once);
+        }
+        // --- DELETE TESTS ---
+        [Fact]
+        public async Task DeleteFile_FileNotFound_ReturnsNotFound()
+        {
+            // Tell the fake repo to return null 
+            _mockRepo.Setup(r => r.GetByCodeAsync("MISSING")).ReturnsAsync((FileMetadata)null);
+
+            var result = await _controller.DeleteFile("MISSING");
+
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.Contains("File not found", notFoundResult.Value.ToString());
+        }
+
+        [Fact]
+        public async Task DeleteFile_ValidCode_ReturnsOk()
+        {
+            var validFile = new FileMetadata { Code = "TODELETE" };
+
+            // Mock the repo finding the file
+            _mockRepo.Setup(r => r.GetByCodeAsync("TODELETE")).ReturnsAsync(validFile);
+
+            // Mock the repo successfully deleting the file
+            _mockRepo.Setup(r => r.DeleteAsync("TODELETE")).Returns(Task.CompletedTask);
+
+            var result = await _controller.DeleteFile("TODELETE");
+
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(200, okResult.StatusCode);
+            Assert.Contains("File deleted successfully", okResult.Value.ToString());
+
+            // Verify that the repository's Delete method was actually called
+            _mockRepo.Verify(r => r.DeleteAsync("TODELETE"), Times.Once);
+        }
     }
 }

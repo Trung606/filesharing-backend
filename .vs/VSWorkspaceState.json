@@ -5,6 +5,7 @@
     "\\.github\\workflows",
     "\\FileSharingAPI",
     "\\FileSharingAPI.Tests",
+    "\\FileSharingAPI\\Controllers",
     "\\FileSharingAPI\\Migrations",
     "\\FileSharingAPI\\Properties",
     "\\FileSharingAPI\\Repositories",
