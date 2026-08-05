@@ -84,9 +84,12 @@ namespace FileSharingAPI.Controllers
             metadata.DownloadCount++;
             await _repo.UpdateAsync(metadata);
 
-            // Redirect the user directly to the secure Cloudinary URL
-            return Redirect(metadata.StoragePath);
+            string downloadUrl = metadata.StoragePath.Replace("/upload/", "/upload/fl_attachment/");
+
+            // Redirect the user to the forced-download URL
+            return Redirect(downloadUrl);
         }
+
         [HttpDelete("{code}")]
         public async Task<IActionResult> DeleteFile(string code)
         {
@@ -94,8 +97,10 @@ namespace FileSharingAPI.Controllers
             if (metadata == null)
                 return NotFound(new { success = false, message = "File not found." });
 
-            // Optional: Delete from Cloudinary if needed, or just remove from DB database records
-            await _repo.DeleteAsync(metadata.Code); // Or whatever your repository delete method is named
+            await _storage.DeleteFileAsync(metadata.StoragePath);
+
+            // Remove from DB database records
+            await _repo.DeleteAsync(metadata.Code);
 
             return Ok(new { success = true, message = "File deleted successfully." });
         }

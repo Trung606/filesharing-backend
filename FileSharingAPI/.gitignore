@@ -8,3 +8,5 @@ wwwroot/uploads/
 
 # Environment variables (if you ever add a .env file)
 .env
+
+.vs/
