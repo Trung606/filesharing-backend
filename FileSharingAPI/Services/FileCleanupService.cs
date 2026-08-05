@@ -16,7 +16,7 @@ namespace FileSharingAPI.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
+            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(2));
 
             while (await timer.WaitForNextTickAsync(stoppingToken))
             {
