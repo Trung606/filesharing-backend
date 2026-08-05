@@ -1,5 +1,6 @@
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
+using FileSharingAPI.Services;
 
 namespace FileSharingAPI.Services
 {
@@ -9,7 +10,8 @@ namespace FileSharingAPI.Services
 
         public CloudinaryStorageService(IConfiguration config)
         {
-            var account = new Account(
+            // Pulls your API keys from appsettings.json
+            Account account = new Account(
                 config["Cloudinary:CloudName"],
                 config["Cloudinary:ApiKey"],
                 config["Cloudinary:ApiSecret"]
@@ -23,41 +25,35 @@ namespace FileSharingAPI.Services
 
             using (var stream = file.OpenReadStream())
             {
-                var uploadParams = new RawUploadParams
+                var uploadParams = new RawUploadParams()
                 {
                     File = new FileDescription(file.FileName, stream),
+                    // Names the file in Cloudinary: e.g., "7BA151_Screenshot.png"
                     PublicId = $"{uniqueCode}_{file.FileName}"
-                    // The SDK handles ResourceType automatically for RawUploadParams now
                 };
 
                 uploadResult = await _cloudinary.UploadAsync(uploadParams);
             }
 
-            // Return the secure cloud URL instead of a local file path
             return uploadResult.SecureUrl.ToString();
         }
 
-        public async Task DeleteFileAsync(string fileUrl)
+        public async Task DeleteFileAsync(string filePath)
         {
-            try
-            {
-                // Cloudinary requires the PublicId to delete. 
-                // We extract the filename from the end of the URL.
-                var uri = new Uri(fileUrl);
-                var publicId = Path.GetFileNameWithoutExtension(uri.LocalPath);
+            // 1. Cloudinary URLs look like this: https://res.cloudinary.com/.../raw/upload/v1234/CODE_file.png
+            // We need to extract just the "CODE_file.png" part to tell Cloudinary what to delete.
+            var publicId = filePath.Split('/').Last();
+            publicId = Uri.UnescapeDataString(publicId); // Fixes spaces (e.g., %20)
 
-                var deleteParams = new DelResParams
-                {
-                    PublicIds = new List<string> { publicId },
-                    ResourceType = ResourceType.Raw
-                };
-
-                await _cloudinary.DeleteResourcesAsync(deleteParams);
-            }
-            catch (Exception ex)
+            // 2. Set up the deletion command. Since you upload files as "raw" assets (as seen in your URLs), 
+            // we must tell Cloudinary to look for a "Raw" resource type.
+            var deletionParams = new DeletionParams(publicId)
             {
-                Console.WriteLine($"Cloudinary delete failed: {ex.Message}");
-            }
+                ResourceType = ResourceType.Raw
+            };
+
+            // 3. Send the secure destroy command to the cloud
+            await _cloudinary.DestroyAsync(deletionParams);
         }
     }
 }
