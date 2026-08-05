@@ -206,7 +206,7 @@ namespace FileSharingAPI.Tests
             var result = await _controller.DownloadFile("NOFILE");
 
             var redirectResult = Assert.IsType<RedirectResult>(result);
-            Assert.Equal("https://res.cloudinary.com/lqcgpply/raw/upload/v1/missing.jpg", redirectResult.Url);
+            Assert.Equal("https://res.cloudinary.com/lqcgpply/raw/upload/fl_attachment/v1/missing.jpg", redirectResult.Url);
         }
 
         [Fact]
